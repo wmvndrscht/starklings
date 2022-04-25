@@ -178,19 +178,6 @@ func play_game{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr
     return ()
 end
 
-func _rec_play_turns{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr, bitwise_ptr : BitwiseBuiltin*}():
-    let (is_finished) = next_turn()
-    if is_finished == TRUE:
-        let (space_contract_address) = get_contract_address()
-        game_finished.emit(space_contract_address)
-
-        return ()
-    end
-
-    _rec_play_turns()
-    return ()
-end
-
 # This function must be invoked to process the next turn of the game.
 @external
 func next_turn{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr, bitwise_ptr : BitwiseBuiltin*}() -> (is_finished: felt):
@@ -208,7 +195,7 @@ func next_turn{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr
 
     let (space_contract_address) = get_contract_address()
     new_turn.emit(space_contract_address, turn + 1)
-
+    
     _spawn_dust()
 
     _move_dust(0, 0)
@@ -610,4 +597,17 @@ func _get_new_vdir{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check
     end
 
     return (vdir=dust.direction.y)
+end
+
+func _rec_play_turns{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr, bitwise_ptr : BitwiseBuiltin*}():
+    let (is_finished) = next_turn()
+    if is_finished == TRUE:
+        let (space_contract_address) = get_contract_address()
+        game_finished.emit(space_contract_address)
+
+        return ()
+    end
+
+    _rec_play_turns()
+    return ()
 end
