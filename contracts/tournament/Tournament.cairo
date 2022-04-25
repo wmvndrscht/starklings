@@ -5,17 +5,27 @@
 
 from starkware.cairo.common.cairo_builtins import HashBuiltin
 from starkware.cairo.common.bool import (TRUE, FALSE)
-from starkware.cairo.common.math import (assert_lt, assert_nn)
+from starkware.cairo.common.math import (assert_lt, assert_nn, assert_not_zero)
+from starkware.cairo.common.math_cmp import is_le
 from starkware.cairo.common.uint256 import (Uint256, uint256_le)
 from starkware.starknet.common.syscalls import (get_contract_address, get_caller_address)
+from starkware.cairo.common.math import unsigned_div_rem
+from starkware.cairo.common.alloc import alloc
 
 # OpenZeppeling dependencies
 from openzeppelin.access.ownable import (Ownable_initializer, Ownable_only_owner)
 from openzeppelin.token.erc20.interfaces.IERC20 import IERC20
 from openzeppelin.token.erc721.interfaces.IERC721 import IERC721
 
-from contracts.interfaces.ispace import ISpace
-
+#from contracts.interfaces.ispace import ISpace
+# TODO: remove this
+@contract_interface
+namespace ISpace:
+    func play_game(
+            rand_contract_address : felt, size : felt, turn_count : felt, max_dust : felt,
+            ships_len : felt, ships : felt*) -> ():
+    end
+end
 
 # ------------
 # STORAGE VARS
@@ -46,6 +56,11 @@ end
 func rand_contract_address_() -> (res : felt):
 end
 
+# Space contract address
+@storage_var
+func space_contract_address_() -> (res : felt):
+end
+
 # Whether or not registration are open
 @storage_var
 func is_tournament_open_() -> (res : felt):
@@ -59,6 +74,21 @@ end
 # Number of ships per tournament
 @storage_var
 func max_ships_per_tournament_() -> (res : felt):
+end
+
+# Size of the grid
+@storage_var
+func grid_size_() -> (res : felt):
+end
+
+# Turn count per battle
+@storage_var
+func turn_count_() -> (res : felt):
+end
+
+# Max dust in the grid at a given time
+@storage_var
+func max_dust_() -> (res : felt):
 end
 
 # Number of players
@@ -76,10 +106,21 @@ end
 func ship_player_(ship_address: felt) -> (res : felt):
 end
 
+# Ship array
+@storage_var
+func ships_(index: felt) -> (ship_address : felt):
+end
+
 # Player scores
 @storage_var
 func player_score_(player_address: felt) -> (res : felt):
 end
+
+# Played battle count
+@storage_var
+func played_battle_count_() -> (res : felt):
+end
+
 
 # -----
 # VIEWS
@@ -152,6 +193,27 @@ func max_ships_per_tournament{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, 
 end
 
 @view
+func grid_size{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+) -> (grid_size : felt):
+    let (grid_size) = grid_size_.read()
+    return (grid_size)
+end
+
+@view
+func turn_count{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+) -> (turn_count : felt):
+    let (turn_count) = turn_count_.read()
+    return (turn_count)
+end
+
+@view
+func max_dust{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+) -> (max_dust : felt):
+    let (max_dust) = max_dust_.read()
+    return (max_dust)
+end
+
+@view
 func player_count{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
 ) -> (player_count : felt):
     let (player_count) = player_count_.read()
@@ -182,6 +244,13 @@ func player_score{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_
     return (player_score)
 end
 
+@view
+func played_battle_count{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+) -> (played_battle_count : felt):
+    let (played_battle_count) = played_battle_count_.read()
+    return (played_battle_count)
+end
+
 # -----
 # CONSTRUCTOR
 # -----
@@ -198,8 +267,12 @@ func constructor{
         reward_token_address: felt,
         boarding_pass_token_address: felt,
         rand_contract_address: felt,
+        space_contract_address: felt,
         ships_per_battle: felt,
-        max_ships_per_tournament: felt
+        max_ships_per_tournament: felt,
+        grid_size: felt,
+        turn_count: felt,
+        max_dust: felt
     ):
     Ownable_initializer(owner)
     tournament_id_.write(tournament_id)
@@ -207,8 +280,12 @@ func constructor{
     reward_token_address_.write(reward_token_address)
     boarding_pass_token_address_.write(boarding_pass_token_address)
     rand_contract_address_.write(rand_contract_address)
+    space_contract_address_.write(space_contract_address)
     ships_per_battle_.write(ships_per_battle)
     max_ships_per_tournament_.write(max_ships_per_tournament)
+    grid_size_.write(grid_size)
+    turn_count_.write(turn_count)
+    max_dust_.write(max_dust)
     player_count_.write(0)
     return ()
 end
@@ -221,8 +298,9 @@ end
 @external
 func open_tournament_registration{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
 ) -> (success: felt):
-    Ownable_only_owner()
+    #Ownable_only_owner()
     _only_tournament_closed()
+    is_tournament_open_.write(TRUE)
     return (TRUE)
 end
 
@@ -230,8 +308,9 @@ end
 @external
 func close_tournament_registration{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
 ) -> (success: felt):
-    Ownable_only_owner()
+    #Ownable_only_owner()
     _only_tournament_open()
+    is_tournament_open_.write(FALSE)
     return (TRUE)
 end
 
@@ -239,7 +318,11 @@ end
 # Start the tournament
 @external
 func start{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (success: felt):
-    # TODO: implement start function
+    #Ownable_only_owner()
+    _only_tournament_closed()
+    
+    _rec_start(0)
+    
     return (TRUE)
 end
 
@@ -279,10 +362,13 @@ func register{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
     with_attr error_message("Tournament: ship already registered"):
         assert ship_registered_player = 0
     end
+    player_count_.write(current_player_count + 1)
     # Write player => ship association
     player_ship_.write(player_address, ship_address)
     # Write ship => player association
     ship_player_.write(ship_address, player_address)
+    # Push ship to array of ships
+    ships_.write(current_player_count, ship_address)
     return (TRUE)
 end
 
@@ -328,3 +414,75 @@ func _only_tournament_closed{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, r
     end
     return ()
 end
+
+
+# Recursively plays all battles
+func _rec_start{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(battle_ship_index : felt):
+    
+    let (end_reached : felt, next_battle_ship_index : felt) = _play_next_battle(battle_ship_index)
+    if end_reached == TRUE:
+        return ()
+    end
+    
+    _rec_start(next_battle_ship_index)
+    return ()
+end
+
+# Play the next battle entirely
+func _play_next_battle{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(ship_index : felt) -> (end_reached : felt, next_battle_ship_index : felt):
+    alloc_locals
+    let (ships_len : felt, ships : felt*) = _build_battle_ship_array(ship_index)
+    if ships_len == 0:
+        return (TRUE, 0)
+    end
+
+    let (space_contract) = space_contract_address_.read()
+    let (rand_contract) = rand_contract_address_.read()
+    let (grid_size) = grid_size_.read()
+    let (turn_count) = turn_count_.read()
+    let (max_dust) = max_dust_.read()
+
+    ISpace.play_game(space_contract,
+            rand_contract, grid_size, turn_count, max_dust,
+            ships_len, ships)
+    
+    let (played_battle_count) = played_battle_count_.read()
+    played_battle_count_.write(played_battle_count + 1)
+
+    # TODO: get scores
+
+    return (FALSE, ship_index + ships_len)
+end
+
+# Get the ships that will participate in the next battle
+func _build_battle_ship_array{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(ship_index : felt) -> (
+        ships_len : felt, ships : felt*):
+    alloc_locals
+
+    let (local ships : felt*) = alloc()
+
+    let (ships_len) = _rec_build_battle_ship_array(ship_index, 0, ships)
+
+    return (ships_len, ships)
+end
+
+func _rec_build_battle_ship_array{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+        ship_index : felt, ships_len : felt, ships : felt*) -> (len : felt):
+    let (ships_per_battle) = ships_per_battle_.read()
+    if ships_len == ships_per_battle:
+        return (ships_len)
+    end
+
+    let (player_count) = player_count_.read()
+    if ship_index == player_count:
+        return (ships_len)
+    end
+
+    let (ship_address : felt) = ships_.read(ship_index)
+    assert_not_zero(ship_address)
+
+    assert ships[ships_len] = ship_address
+
+    return _rec_build_battle_ship_array(ship_index + 1, ships_len + 1, ships)
+end
+

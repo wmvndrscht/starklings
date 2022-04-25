@@ -44,6 +44,15 @@ namespace ITournament:
     func max_ships_per_tournament() -> (res: felt):
     end
 
+    func grid_size() -> (res : felt):
+    end
+
+    func turn_count() -> (res : felt):
+    end
+
+    func max_dust() -> (res : felt):
+    end
+
     func player_count() -> (res: felt):
     end
 
@@ -53,5 +62,6 @@ namespace ITournament:
     func ship_player(ship_address: felt) -> (res: felt):
     end
     
-
+    func played_battle_count() -> (res : felt):
+    end
 end
