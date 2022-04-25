@@ -111,6 +111,22 @@ end
 func ships_(index: felt) -> (ship_address : felt):
 end
 
+# Array of playing ships
+@storage_var
+func playing_ships_(index: felt) -> (ship_address : felt):
+end
+@storage_var
+func playing_ships_count_() -> (res : felt):
+end
+
+# Array of winner ships
+@storage_var
+func winner_ships_(index: felt) -> (ship_address : felt):
+end
+@storage_var
+func winner_ships_count_() -> (res : felt):
+end
+
 # Player scores
 @storage_var
 func player_score_(player_address: felt) -> (res : felt):
@@ -321,7 +337,7 @@ func start{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() 
     #Ownable_only_owner()
     _only_tournament_closed()
     
-    _rec_start(0)
+    _rec_start()
     
     return (TRUE)
 end
@@ -367,8 +383,9 @@ func register{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
     player_ship_.write(player_address, ship_address)
     # Write ship => player association
     ship_player_.write(ship_address, player_address)
-    # Push ship to array of ships
-    ships_.write(current_player_count, ship_address)
+    # Push ship to array of playing ships
+    playing_ships_.write(current_player_count, ship_address)
+    playing_ships_count_.write(current_player_count + 1)
     return (TRUE)
 end
 
@@ -415,16 +432,33 @@ func _only_tournament_closed{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, r
     return ()
 end
 
+# Recursively plays all battles until there is only one winner
+func _rec_start{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}():
+    let (ship_count) = playing_ships_count_.read()
+    assert_not_zero(ship_count)
+    
+    _rec_play_current_round_battles(0)
+    _update_playing_ships()
+
+    let (ship_count) = playing_ships_count_.read()
+    if ship_count == 1:
+        # This is the end! We have a single winner!
+        return ()
+    end
+
+    _rec_start()
+    return ()
+end
 
 # Recursively plays all battles
-func _rec_start{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(battle_ship_index : felt):
+func _rec_play_current_round_battles{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(battle_ship_index : felt):
     
     let (end_reached : felt, next_battle_ship_index : felt) = _play_next_battle(battle_ship_index)
     if end_reached == TRUE:
         return ()
     end
     
-    _rec_start(next_battle_ship_index)
+    _rec_play_current_round_battles(next_battle_ship_index)
     return ()
 end
 
@@ -450,6 +484,11 @@ func _play_next_battle{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_c
     played_battle_count_.write(played_battle_count + 1)
 
     # TODO: get scores
+    # TODO: get winner
+    let winner = ships[0]
+    let (winner_ships_count) = winner_ships_count_.read()
+    winner_ships_.write(winner_ships_count, winner)
+    winner_ships_count_.write(winner_ships_count+1)
 
     return (FALSE, ship_index + ships_len)
 end
@@ -473,16 +512,37 @@ func _rec_build_battle_ship_array{syscall_ptr : felt*, pedersen_ptr : HashBuilti
         return (ships_len)
     end
 
-    let (player_count) = player_count_.read()
-    if ship_index == player_count:
+    let (ship_count) = playing_ships_count_.read()
+    if ship_index == ship_count:
         return (ships_len)
     end
 
-    let (ship_address : felt) = ships_.read(ship_index)
+    let (ship_address : felt) = playing_ships_.read(ship_index)
     assert_not_zero(ship_address)
 
     assert ships[ships_len] = ship_address
 
     return _rec_build_battle_ship_array(ship_index + 1, ships_len + 1, ships)
+end
+
+func _update_playing_ships{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}():
+    let (ship_count) = winner_ships_count_.read()
+    playing_ships_count_.write(ship_count)
+    winner_ships_count_.write(0)
+
+    _rec_update_playing_ships(0, ship_count)
+    return ()
+end
+
+func _rec_update_playing_ships{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(index : felt, count : felt):
+    if index == count:
+        return ()
+    end
+
+    let (ship_address : felt) = winner_ships_.read(index)
+    playing_ships_.write(index, ship_address)
+
+    _rec_update_playing_ships(index + 1, count)
+    return ()
 end
 

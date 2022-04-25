@@ -89,4 +89,4 @@ async def test_tournament_e2e(tournament_factory):
     await tournament.start().invoke(caller_address=ADMIN)
 
     execution_info = await tournament.played_battle_count().call()
-    assert execution_info.result == (2,)
+    assert execution_info.result == (3,) # 2 battles in first round, and 1 final battle
