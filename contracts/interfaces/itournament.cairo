@@ -8,10 +8,10 @@ namespace ITournament:
     func start() -> ():
     end
 
-    func open_tournament_registration() -> ():
+    func open_tournament_registrations() -> ():
     end
 
-    func close_tournament_registration() -> ():
+    func close_tournament_registrations() -> ():
     end
 
     func register(ship_address) -> ():
@@ -35,7 +35,7 @@ namespace ITournament:
     func reward_total_amount() -> (res: Uint256):
     end
 
-    func is_tournament_open() -> (res: felt):
+    func are_tournament_registrations_open() -> (res: felt):
     end
 
     func ships_per_battle() -> (res: felt):

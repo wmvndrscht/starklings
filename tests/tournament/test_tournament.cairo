@@ -42,20 +42,16 @@ func test_tournament{syscall_ptr : felt*, range_check_ptr}():
     %{ mock_call(ids.only_dust_token_address, "balanceOf", [100, 0]) %}
     let (reward_total_amount) = ITournament.reward_total_amount(tournament_address)
     assert reward_total_amount.low = 100
-    assert reward_total_amount.high = 0
-
-    #%{ stop_expecting_revert = expect_revert(error_message="Ownable: caller is not the owner") %}
-    #ITournament.open_tournament_registration(tournament_address)
-    #%{ stop_expecting_revert() %}   
+    assert reward_total_amount.high = 0  
 
     # Start registration
     %{ start_prank(42) %}
-    let (is_open) = ITournament.is_tournament_open(tournament_address)
+    let (is_open) = ITournament.are_tournament_registrations_open(tournament_address)
     assert is_open = FALSE
 
-    ITournament.open_tournament_registration(tournament_address)
+    ITournament.open_tournament_registrations(tournament_address)
 
-    let (is_open) = ITournament.is_tournament_open(tournament_address)
+    let (is_open) = ITournament.are_tournament_registrations_open(tournament_address)
     assert is_open = TRUE
     %{ stop_prank() %}
 
@@ -77,8 +73,8 @@ func test_tournament{syscall_ptr : felt*, range_check_ptr}():
 
     # Close registration
     %{ start_prank(42) %}
-    ITournament.close_tournament_registration(tournament_address)
-    let (is_open) = ITournament.is_tournament_open(tournament_address)
+    ITournament.close_tournament_registrations(tournament_address)
+    let (is_open) = ITournament.are_tournament_registrations_open(tournament_address)
     assert is_open = FALSE
     %{ stop_prank() %}
 

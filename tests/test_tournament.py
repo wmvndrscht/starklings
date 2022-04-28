@@ -19,9 +19,11 @@ MAX_FELT = 2**251 + 17 * 2**192 + 1
 SHIP1 = 100
 SHIP2 = 102
 SHIP3 = 103
+SHIP4 = 104
 PLAYER1 = get_selector_from_name('player1')
 PLAYER2 = get_selector_from_name('player2')
 PLAYER3 = get_selector_from_name('player3')
+PLAYER4 = get_selector_from_name('player4')
 
 # Auxiliary functions
 def str_to_felt(text):
@@ -46,6 +48,7 @@ async def tournament_factory(starknet: Starknet) -> StarknetContract:
     await starKonquestBoardingPass.mint(PLAYER1, (1,0)).invoke(caller_address=ADMIN)
     await starKonquestBoardingPass.mint(PLAYER2, (2,0)).invoke(caller_address=ADMIN)
     await starKonquestBoardingPass.mint(PLAYER3, (3,0)).invoke(caller_address=ADMIN)
+    await starKonquestBoardingPass.mint(PLAYER4, (4,0)).invoke(caller_address=ADMIN)
 
     space = await deploy_contract(starknet, 'core/space.cairo')
     rand = await deploy_contract(starknet, 'core/rand.cairo')
@@ -80,6 +83,7 @@ async def test_tournament_e2e(tournament_factory):
     await tournament.register(SHIP1).invoke(caller_address=PLAYER1)
     await tournament.register(SHIP2).invoke(caller_address=PLAYER2)
     await tournament.register(SHIP3).invoke(caller_address=PLAYER3)
+    await tournament.register(SHIP4).invoke(caller_address=PLAYER4)
 
     await tournament.close_tournament_registrations().invoke(caller_address=ADMIN)
 
