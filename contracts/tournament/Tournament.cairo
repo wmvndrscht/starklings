@@ -63,7 +63,7 @@ end
 
 # Whether or not registration are open
 @storage_var
-func is_tournament_open_() -> (res : felt):
+func is_tournament_registration_open_() -> (res : felt):
 end
 
 # Number of ships per battle
@@ -177,10 +177,10 @@ func rand_contract_address{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, ran
 end
 
 @view
-func is_tournament_open{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-) -> (is_tournament_open : felt):
-    let (is_tournament_open) = is_tournament_open_.read()
-    return (is_tournament_open)
+func is_tournament_registration_open{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+) -> (is_tournament_registration_open : felt):
+    let (is_tournament_registration_open) = is_tournament_registration_open_.read()
+    return (is_tournament_registration_open)
 end
 
 @view
@@ -315,8 +315,8 @@ end
 func open_tournament_registration{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
 ) -> (success: felt):
     #Ownable_only_owner()
-    _only_tournament_closed()
-    is_tournament_open_.write(TRUE)
+    _only_tournament_registration_closed()
+    is_tournament_registration_open_.write(TRUE)
     return (TRUE)
 end
 
@@ -325,8 +325,8 @@ end
 func close_tournament_registration{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
 ) -> (success: felt):
     #Ownable_only_owner()
-    _only_tournament_open()
-    is_tournament_open_.write(FALSE)
+    _only_tournament_registration_open()
+    is_tournament_registration_open_.write(FALSE)
     return (TRUE)
 end
 
@@ -335,7 +335,7 @@ end
 @external
 func start{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (success: felt):
     #Ownable_only_owner()
-    _only_tournament_closed()
+    _only_tournament_registration_closed()
     
     _rec_start()
     
@@ -349,7 +349,7 @@ func register{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
     ship_address: felt
 ) -> (success: felt):
     alloc_locals
-    _only_tournament_open()
+    _only_tournament_registration_open()
     let (player_address) = get_caller_address()
     let (boarding_pass_token_address) = boarding_pass_token_address_.read()
     # Check access control with NFT boarding pass
@@ -414,20 +414,20 @@ func _decrease_score{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_che
     return ()
 end
 
-func _only_tournament_open{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+func _only_tournament_registration_open{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
 ):
-    let (is_tournament_open) = is_tournament_open_.read()
+    let (is_tournament_registration_open) = is_tournament_registration_open_.read()
     with_attr error_message("Tournament: tournament is open"):
-        assert is_tournament_open = TRUE
+        assert is_tournament_registration_open = TRUE
     end
     return ()
 end
 
-func _only_tournament_closed{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+func _only_tournament_registration_closed{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
 ):
-    let (is_tournament_open) = is_tournament_open_.read()
+    let (is_tournament_registration_open) = is_tournament_registration_open_.read()
     with_attr error_message("Tournament: tournament is closed"):
-        assert is_tournament_open = FALSE
+        assert is_tournament_registration_open = FALSE
     end
     return ()
 end
