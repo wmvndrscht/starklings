@@ -314,7 +314,7 @@ end
 @external
 func open_tournament_registration{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
 ) -> (success: felt):
-    #Ownable_only_owner()
+    #TODO: add Ownable_only_owner()
     _only_tournament_registration_closed()
     is_tournament_registration_open_.write(TRUE)
     return (TRUE)
@@ -324,7 +324,7 @@ end
 @external
 func close_tournament_registration{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
 ) -> (success: felt):
-    #Ownable_only_owner()
+    #TODO: add Ownable_only_owner()
     _only_tournament_registration_open()
     is_tournament_registration_open_.write(FALSE)
     return (TRUE)
@@ -334,7 +334,7 @@ end
 # Start the tournament
 @external
 func start{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (success: felt):
-    #Ownable_only_owner()
+    #TODO: add Ownable_only_owner()
     _only_tournament_registration_closed()
     
     _recursive_start()
