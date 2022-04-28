@@ -69,12 +69,12 @@ async def tournament_factory(starknet: Starknet) -> StarknetContract:
 async def test_tournament_e2e(tournament_factory):
     tournament = tournament_factory
 
-    execution_info = await tournament.is_tournament_open().call()
+    execution_info = await tournament.is_tournament_registration_open().call()
     assert execution_info.result == (0,)
 
     await tournament.open_tournament_registration().invoke(caller_address=ADMIN)
 
-    execution_info = await tournament.is_tournament_open().call()
+    execution_info = await tournament.is_tournament_registration_open().call()
     assert execution_info.result == (1,)
 
     await tournament.register(SHIP1).invoke(caller_address=PLAYER1)
@@ -83,7 +83,7 @@ async def test_tournament_e2e(tournament_factory):
 
     await tournament.close_tournament_registration().invoke(caller_address=ADMIN)
 
-    execution_info = await tournament.is_tournament_open().call()
+    execution_info = await tournament.is_tournament_registration_open().call()
     assert execution_info.result == (0,)
 
     await tournament.start().invoke(caller_address=ADMIN)

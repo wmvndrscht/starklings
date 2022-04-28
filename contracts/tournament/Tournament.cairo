@@ -116,7 +116,7 @@ end
 func playing_ships_(index: felt) -> (ship_address : felt):
 end
 @storage_var
-func playing_ships_count_() -> (res : felt):
+func playing_ship_count_() -> (res : felt):
 end
 
 # Array of winner ships
@@ -385,7 +385,7 @@ func register{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
     ship_player_.write(ship_address, player_address)
     # Push ship to array of playing ships
     playing_ships_.write(current_player_count, ship_address)
-    playing_ships_count_.write(current_player_count + 1)
+    playing_ship_count_.write(current_player_count + 1)
     return (TRUE)
 end
 
@@ -434,13 +434,13 @@ end
 
 # Recursively plays all battles until there is only one winner
 func _recursive_start{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}():
-    let (ship_count) = playing_ships_count_.read()
+    let (ship_count) = playing_ship_count_.read()
     assert_not_zero(ship_count)
     
     _recursive_play_current_round_battles(0)
     _update_playing_ships_for_new_round()
 
-    let (ship_count) = playing_ships_count_.read()
+    let (ship_count) = playing_ship_count_.read()
     if ship_count == 1:
         # This is the end! We have a single winner!
         return ()
@@ -452,24 +452,23 @@ end
 
 # Recursively plays all battles
 func _recursive_play_current_round_battles{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(battle_ship_index : felt):
-    
-    let (end_reached : felt, next_battle_ship_index : felt) = _play_next_battle(battle_ship_index)
-    if end_reached == TRUE:
+    alloc_locals
+
+    let (local ships_len : felt, ships : felt*) = _build_battle_ship_array(battle_ship_index)
+    if ships_len == 0:
+        # No more ship in competition. The round is finished.
         return ()
     end
+
+    _play_next_battle(ships_len, ships)
     
-    _recursive_play_current_round_battles(next_battle_ship_index)
+    _recursive_play_current_round_battles(battle_ship_index + ships_len)
     return ()
 end
 
 # Play the next battle entirely
-func _play_next_battle{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(ship_index : felt) -> (end_reached : felt, next_battle_ship_index : felt):
+func _play_next_battle{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(ships_len : felt, ships : felt*):
     alloc_locals
-    let (ships_len : felt, ships : felt*) = _build_battle_ship_array(ship_index)
-    if ships_len == 0:
-        return (TRUE, 0)
-    end
-
     let (space_contract) = space_contract_address_.read()
     let (rand_contract) = rand_contract_address_.read()
     let (grid_size) = grid_size_.read()
@@ -490,7 +489,7 @@ func _play_next_battle{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_c
     winner_ships_.write(winner_ships_count, winner)
     winner_ships_count_.write(winner_ships_count+1)
 
-    return (FALSE, ship_index + ships_len)
+    return ()
 end
 
 # Get the ships that will participate in the next battle
@@ -512,7 +511,7 @@ func _recursive_build_battle_ship_array{syscall_ptr : felt*, pedersen_ptr : Hash
         return (ships_len)
     end
 
-    let (ship_count) = playing_ships_count_.read()
+    let (ship_count) = playing_ship_count_.read()
     if ship_index == ship_count:
         return (ships_len)
     end
@@ -527,7 +526,7 @@ end
 
 func _update_playing_ships_for_new_round{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}():
     let (ship_count) = winner_ships_count_.read()
-    playing_ships_count_.write(ship_count)
+    playing_ship_count_.write(ship_count)
     winner_ships_count_.write(0)
 
     _recursive_update_playing_ships_for_new_round(0, ship_count)
