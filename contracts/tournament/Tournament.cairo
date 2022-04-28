@@ -61,9 +61,9 @@ end
 func space_contract_address_() -> (res : felt):
 end
 
-# Whether or not registration are open
+# Whether or not registrations are open
 @storage_var
-func is_tournament_registration_open_() -> (res : felt):
+func are_tournament_registrations_open_() -> (res : felt):
 end
 
 # Number of ships per battle
@@ -177,10 +177,10 @@ func rand_contract_address{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, ran
 end
 
 @view
-func is_tournament_registration_open{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-) -> (is_tournament_registration_open : felt):
-    let (is_tournament_registration_open) = is_tournament_registration_open_.read()
-    return (is_tournament_registration_open)
+func are_tournament_registrations_open{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+) -> (are_tournament_registrations_open : felt):
+    let (are_tournament_registrations_open) = are_tournament_registrations_open_.read()
+    return (are_tournament_registrations_open)
 end
 
 @view
@@ -310,23 +310,23 @@ end
 # EXTERNAL FUNCTIONS
 # -----
 
-# Open tournament registration
+# Open tournament registrations
 @external
-func open_tournament_registration{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+func open_tournament_registrations{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
 ) -> (success: felt):
     #TODO: add Ownable_only_owner()
-    _only_tournament_registration_closed()
-    is_tournament_registration_open_.write(TRUE)
+    _only_tournament_registrations_closed()
+    are_tournament_registrations_open_.write(TRUE)
     return (TRUE)
 end
 
-# Close tournament registration
+# Close tournament registrations
 @external
-func close_tournament_registration{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+func close_tournament_registrations{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
 ) -> (success: felt):
     #TODO: add Ownable_only_owner()
-    _only_tournament_registration_open()
-    is_tournament_registration_open_.write(FALSE)
+    _only_tournament_registrations_open()
+    are_tournament_registrations_open_.write(FALSE)
     return (TRUE)
 end
 
@@ -335,7 +335,7 @@ end
 @external
 func start{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (success: felt):
     #TODO: add Ownable_only_owner()
-    _only_tournament_registration_closed()
+    _only_tournament_registrations_closed()
     
     _recursive_start()
     
@@ -349,7 +349,7 @@ func register{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
     ship_address: felt
 ) -> (success: felt):
     alloc_locals
-    _only_tournament_registration_open()
+    _only_tournament_registrations_open()
     let (player_address) = get_caller_address()
     let (boarding_pass_token_address) = boarding_pass_token_address_.read()
     # Check access control with NFT boarding pass
@@ -414,20 +414,20 @@ func _decrease_score{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_che
     return ()
 end
 
-func _only_tournament_registration_open{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+func _only_tournament_registrations_open{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
 ):
-    let (is_tournament_registration_open) = is_tournament_registration_open_.read()
+    let (are_tournament_registrations_open) = are_tournament_registrations_open_.read()
     with_attr error_message("Tournament: tournament is open"):
-        assert is_tournament_registration_open = TRUE
+        assert are_tournament_registrations_open = TRUE
     end
     return ()
 end
 
-func _only_tournament_registration_closed{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+func _only_tournament_registrations_closed{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
 ):
-    let (is_tournament_registration_open) = is_tournament_registration_open_.read()
+    let (are_tournament_registrations_open) = are_tournament_registrations_open_.read()
     with_attr error_message("Tournament: tournament is closed"):
-        assert is_tournament_registration_open = FALSE
+        assert are_tournament_registrations_open = FALSE
     end
     return ()
 end
