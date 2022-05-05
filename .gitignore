@@ -10,3 +10,6 @@ build
 
 # Pyinstaller
 dist
+
+# DS_Store
+*DS_Store
